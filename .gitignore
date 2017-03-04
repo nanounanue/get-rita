@@ -87,3 +87,18 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+
+# Archivos de datos
+*.xlsx
+*.dat
+*.csv
+*.tsv
+*.psv
+*.sqlite
+*.doc*
+*.xls*
+*.pdf
+*.ppt*
+*.sqlite
+*.zip
