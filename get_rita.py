@@ -3,6 +3,10 @@
 """ get_rita.py
 """
 
+import os.path
+
+import smart_open
+
 import datetime
 from calendar import month_name
 import requests
@@ -27,9 +31,6 @@ ORIGIN="https://{host}"
 USER_AGENT="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/55.0.2883.87 Chrome/55.0.2883.87 Safari/537.36"
 CONTENT_TYPE="application/x-www-form-urlencoded"
 
-## Data directory
-DATA_DIR="data"
-
 def _valid_date(year, month):
     is_valid = True
     ## the available data set is generally about 3 months behind, make
@@ -49,17 +50,27 @@ def _valid_date(year, month):
 
     return is_valid 
 
-@click.command()
-@click.option('--year', help='Year to be downloaded', type=click.INT)
-@click.option('--month', help='Month to be downloaded', type=click.INT)
-def download_data(year, month):
+@click.command(short_help="Downloads a month from the BTS Airline On-Time Performance Data")
+@click.argument('year', type=click.INT)
+@click.argument('month', type=click.INT)
+@click.argument('data_path', type=click.Path())
+def download_data(year, month, data_path):
     """
+
+    Downloads a month from the BTS Airline On-Time Performance Data
+
+    DATA_PATH could be a local file or a Amazon S3 bucket.
+
+    The downloaded data will be compressed as a ZIP file.
+
+
     """
 
     if not _valid_date(year, month):
         raise Exception("It is probable that this data ({}/{}) doesn't exists yet ".format(month, year))
 
     logger.info("Collecting RITA for: {}/{}".format(month, year))
+    logger.info("We will download the data to: {}".format(data_path))
 
     ## Fixing the data to POST
     ## For some weird reason, FREQUENCY is equal to the month ... (¬_¬)
@@ -69,7 +80,7 @@ def download_data(year, month):
     post_data = post_data.replace("\n", "")
 
     ## Make a friendly file name
-    output_file_name = '{0}/{1}-{2}'.format(DATA_DIR,str(month).zfill(2), year)
+    output_file_name = os.path.join(data_path,'{0}-{1}'.format(str(month).zfill(2), year))
     zip_file_name = '{}.zip'.format(output_file_name)
 
     ## Create a session object, so we can keep the cookies, headers, etc. between requests
@@ -99,7 +110,7 @@ def download_data(year, month):
         response = s.get(remote_file)
 
         ## Write the remote file to local disk
-        with open(zip_file_name, "wb") as local_file:
+        with smart_open.smart_open(zip_file_name, "wb") as local_file:
             local_file.write(response.content)
 
         tac = clock()
