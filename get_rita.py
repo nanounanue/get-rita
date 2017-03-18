@@ -31,8 +31,8 @@ ORIGIN="https://{host}"
 USER_AGENT="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/55.0.2883.87 Chrome/55.0.2883.87 Safari/537.36"
 CONTENT_TYPE="application/x-www-form-urlencoded"
 
-def _valid_date(year, month):
-    is_valid = True
+
+def _max_valid_date():
     ## the available data set is generally about 3 months behind, make
     ## sure that we never ask for data that is within the last 3 months
     max_date = datetime.date.today() + datetime.timedelta(days=-90)
@@ -40,20 +40,29 @@ def _valid_date(year, month):
     max_year = int(max_date.strftime('%Y'))
     max_month = int(max_date.strftime('%m'))
 
+    return(max_year, max_month)
+
+def _validate_year(ctx, param, year):
+    max_year, _ = _max_valid_date()
+
     if year > max_year:
-        logging.info("You are requesting data from the future!: {} should be less or equal than {}".format(year, max_year))
-        is_valid = False
+        raise click.BadParameter("You are requesting data from the future!: ({}) should be less or equal than {}".format(year, max_year))
 
-    if year == max_year and month > max_month:
-        logging.info("You are requesting data from the future!: {}/{} should be less than {}/{}".format(month, year, max_month, max_year))
-        is_valid = False
+    if year < 1987:
+        raise click.BadParameter("You are requesting a year ({}), that is less than 1987 . The site doesn't have data for that!".format(year))
 
-    return is_valid 
+def _validate_month(ctx, param, month):
+    max_year, max_month = _max_valid_date()
+
+    if month not in range(1,13):
+        raise click.BadParameter("The month should be specified between 1 and 12")
+
+
 
 @click.command(short_help="Downloads a month from the BTS Airline On-Time Performance Data")
-@click.argument('year', type=click.INT)
-@click.argument('month', type=click.INT)
-@click.argument('data_path', type=click.Path())
+@click.option('--year', type=click.INT, help="The year to download (YYYY, and YYYY >= 1987)", callback=_validate_year)
+@click.option('--month', type=click.INT, help="The month to download ([1-12])", callback=_validate_month)
+@click.option('--data_path', type=click.Path(), help="The directory where the data would be stored (could be a Amazon S3 bucket)", default="/tmp")
 def download_data(year, month, data_path):
     """
 
@@ -65,9 +74,6 @@ def download_data(year, month, data_path):
 
 
     """
-
-    if not _valid_date(year, month):
-        raise Exception("It is probable that this data ({}/{}) doesn't exists yet ".format(month, year))
 
     logger.info("Collecting RITA for: {}/{}".format(month, year))
     logger.info("We will download the data to: {}".format(data_path))
