@@ -51,13 +51,14 @@ def _validate_year(ctx, param, year):
     if year < 1987:
         raise click.BadParameter("You are requesting a year ({}), that is less than 1987 . The site doesn't have data for that!".format(year))
 
+    return year
+
 def _validate_month(ctx, param, month):
     max_year, max_month = _max_valid_date()
 
     if month not in range(1,13):
         raise click.BadParameter("The month should be specified between 1 and 12")
-
-
+    return month
 
 @click.command(short_help="Downloads a month from the BTS Airline On-Time Performance Data")
 @click.option('--year', type=click.INT, help="The year to download (YYYY, and YYYY >= 1987)", callback=_validate_year)
